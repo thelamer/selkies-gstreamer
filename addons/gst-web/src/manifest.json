@@ -1,6 +1,6 @@
 {
-    "name": "Selkies WebRTC",
-    "short_name": "selkies",
+    "name": "JeevOps",
+    "short_name": "jeevops",
     "lang": "en-US",
     "start_url": "./index.html",
     "display": "minimal-ui",
