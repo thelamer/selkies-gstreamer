@@ -1,0 +1,84 @@
+---
+import "@/styles/globals.css";
+
+interface Props {
+	title: string;
+}
+
+const { title } = Astro.props;
+
+// Declare global window properties
+declare global {
+	interface Window {
+		adapter: any;
+		React: any;
+	}
+}
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="description" content="Cloud gaming and remote desktop streaming platform" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<link rel="manifest" href="/manifest.json" crossorigin="use-credentials" />
+		<link rel="icon" type="image/png" href="/icon-192x192.png" />
+		<link rel="apple-touch-icon" href="/icon-192x192.png" />
+		<meta name="theme-color" content="black" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black" />
+		<meta name="apple-mobile-web-app-title" content="Selkies" />
+		<meta name="generator" content={Astro.generator} />
+		<meta name="mobile-web-app-capable" content="yes">
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<title>{title}</title>
+	</head>
+	<body>
+		<div id="app">
+			<slot />
+		</div>
+
+		<script is:inline>
+			// Initialize WebRTC adapter
+			(async () => {
+				const adapter = await import('webrtc-adapter');
+				window.adapter = adapter;
+			})();
+
+			// Handle messages from the ServiceWorker
+			navigator.serviceWorker.addEventListener('message', event => {
+				console.log("Message from service worker: ", event.data);
+				if (event.data.msg === "reload") {
+					setTimeout(() => {
+						// Unregister service worker then force reload
+						navigator.serviceWorker.getRegistration().then((reg) => {
+							if (reg) {
+								reg.unregister().then(() => window.location.reload());
+							} else {
+								window.location.reload();
+							}
+						})
+						.catch(() => {
+							window.location.reload();
+						})
+					}, 400);
+				}
+			});
+
+			// Ensure React is available before hydration
+			(async () => {
+				const React = await import('react');
+				window.React = React.default;
+			})();
+		</script>
+
+		<!-- Core WebRTC Scripts -->
+		<script is:inline src="@/lib/scripts/guacamole-keyboard-selkies.js"></script>
+		<script is:inline src="@/lib/scripts/util.js"></script>
+		<script is:inline src="@/lib/scripts/gamepad.js"></script>
+		<script is:inline src="@/lib/scripts/input.js"></script>
+		<script is:inline src="@/lib/scripts/signalling.js"></script>
+		<script is:inline src="@/lib/scripts/webrtc.js"></script>
+	</body>
+</html>
