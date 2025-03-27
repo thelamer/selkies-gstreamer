@@ -99,14 +99,14 @@ export function MenuComponent() {
 				<div className="flex gap-1">
 					<Tooltip>
 						<TooltipTrigger>
-							<Button 
+							<div 
 								variant="ghost" 
 								size="icon" 
 								className="h-8 w-8"
 								onClick={clipboardStatus === 'enabled' ? undefined : enableClipboard}
 							>
 								<ClipboardCopy className="h-4 w-4" />
-							</Button>
+							</div>
 						</TooltipTrigger>
 						<TooltipContent>
 							{clipboardStatus === 'enabled' 
@@ -117,19 +117,19 @@ export function MenuComponent() {
 					</Tooltip>
 					<Tooltip>
 						<TooltipTrigger>
-							<Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+							<div variant="ghost" size="icon" className="h-8 w-8" aschild="true">
 								<a href="./">
 									<Home className="h-4 w-4" />
 								</a>
-							</Button>
+							</div>
 						</TooltipTrigger>
 						<TooltipContent>Return to launcher</TooltipContent>
 					</Tooltip>
 					<Tooltip>
 						<TooltipTrigger>
-							<Button variant="ghost" size="icon" className="h-8 w-8">
+							<div variant="ghost" size="icon" className="h-8 w-8">
 								<Gamepad2 className="h-4 w-4" />
-							</Button>
+							</div>
 						</TooltipTrigger>
 						<TooltipContent>
 							{gamepad.gamepadState === 'connected' 
@@ -140,9 +140,9 @@ export function MenuComponent() {
 					</Tooltip>
 					<Tooltip>
 						<TooltipTrigger>
-							<Button variant="ghost" size="icon" className="h-8 w-8 ml-2">
+							<div variant="ghost" size="icon" className="h-8 w-8 ml-2">
 								<User className="h-4 w-4" />
-							</Button>
+							</div>
 						</TooltipTrigger>
 						<TooltipContent>Logged in as {getUsername()}</TooltipContent>
 					</Tooltip>
@@ -260,14 +260,14 @@ export function MenuComponent() {
 
 			return (
 				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<Button variant="ghost" className="flex w-full items-center px-3 py-1.5 text-sm hover:bg-accent group">
+					<DropdownMenuTrigger aschild="true">
+						<div variant="ghost" className="flex w-full items-center px-3 py-1.5 text-sm hover:bg-accent group">
 							<ChevronLeft className="h-4 w-4 mr-2 flex-shrink-0" />
 							<div className="flex flex-1 justify-between items-center">
 								<span className="text-left">{item}</span>
 								{/* <span className="text-muted-foreground text-xs">{selectedValue}</span> */}
 							</div>
-						</Button>
+						</div>
 					</DropdownMenuTrigger>
 					<DropdownMenuContent side="left" align="start" className="w-[140px]">
 						<ScrollArea className="h-[200px]">

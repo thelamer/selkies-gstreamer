@@ -41,11 +41,15 @@ self.addEventListener('activate', evt => {
 
 /* Start the service worker and cache all of the app's content */
 self.addEventListener('install', function(e) {
-  e.waitUntil(
-    caches.open(getCacheName()).then(function(cache) {
-      return cache.addAll(filesToCache);
-    })
-  );
+  try {
+    e.waitUntil(
+      caches.open(getCacheName()).then(function(cache) {
+        return cache.addAll(filesToCache);
+      })
+    );
+  } catch (e) {
+    console.log(e);
+  } 
 });
 
 /* Serve cached content when offline */
