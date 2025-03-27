@@ -100,8 +100,6 @@ export function MenuComponent() {
 					<Tooltip>
 						<TooltipTrigger>
 							<div 
-								variant="ghost" 
-								size="icon" 
 								className="h-8 w-8"
 								onClick={clipboardStatus === 'enabled' ? undefined : enableClipboard}
 							>
@@ -117,7 +115,7 @@ export function MenuComponent() {
 					</Tooltip>
 					<Tooltip>
 						<TooltipTrigger>
-							<div variant="ghost" size="icon" className="h-8 w-8" aschild="true">
+							<div className="h-8 w-8" >
 								<a href="./">
 									<Home className="h-4 w-4" />
 								</a>
@@ -127,7 +125,7 @@ export function MenuComponent() {
 					</Tooltip>
 					<Tooltip>
 						<TooltipTrigger>
-							<div variant="ghost" size="icon" className="h-8 w-8">
+							<div className="h-8 w-8">
 								<Gamepad2 className="h-4 w-4" />
 							</div>
 						</TooltipTrigger>
@@ -140,7 +138,7 @@ export function MenuComponent() {
 					</Tooltip>
 					<Tooltip>
 						<TooltipTrigger>
-							<div variant="ghost" size="icon" className="h-8 w-8 ml-2">
+							<div className="h-8 w-8 ml-2">
 								<User className="h-4 w-4" />
 							</div>
 						</TooltipTrigger>
@@ -260,8 +258,8 @@ export function MenuComponent() {
 
 			return (
 				<DropdownMenu>
-					<DropdownMenuTrigger aschild="true">
-						<div variant="ghost" className="flex w-full items-center px-3 py-1.5 text-sm hover:bg-accent group">
+					<DropdownMenuTrigger>
+						<div className="flex w-full items-center px-3 py-1.5 text-sm hover:bg-accent group">
 							<ChevronLeft className="h-4 w-4 mr-2 flex-shrink-0" />
 							<div className="flex flex-1 justify-between items-center">
 								<span className="text-left">{item}</span>
