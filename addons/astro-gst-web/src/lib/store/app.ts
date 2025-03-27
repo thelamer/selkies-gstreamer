@@ -395,165 +395,91 @@ const useAppStore = create<WebRTCState & WebRTCActions>((set, get) => ({
 			});
 	},
 
-initializeWebRTC: () => {
-    if (!isClient) {
-        console.log("initializeWebRTC: Not running in a client environment, exiting.");
-        return;
-    }
-    console.log("initializeWebRTC: Starting WebRTC initialization...");
+	initializeWebRTC: () => {
+		if (!isClient) return;
 
-    // Add PWA service worker registration
-    if ('serviceWorker' in navigator) {
-        console.log("initializeWebRTC: Service worker API is available in navigator.");
-        navigator.serviceWorker.register('./sw.js?ts=CACHE_VERSION')
-            .then(registration => {
-                console.log('initializeWebRTC: Service worker registered successfully:', registration);
-            })
-            .catch(error => {
-                console.error('initializeWebRTC: Service worker registration failed:', error);
-            });
-    } else {
-        console.log("initializeWebRTC: Service worker API is NOT available in navigator.");
-    }
+        // Add PWA service worker registration
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js?ts=CACHE_VERSION');
+        }
 
-    const videoElement = document.getElementById("stream") as HTMLVideoElement;
-    const audioElement = document.getElementById("audio_stream") as HTMLAudioElement;
+		const state = get();
+		const videoElement = document.getElementById("stream") as HTMLVideoElement;
+		const audioElement = document.getElementById("audio_stream") as HTMLAudioElement;
 
-    if (!videoElement) {
-        console.error("initializeWebRTC: ERROR! Video element with ID 'stream' not found in the DOM!");
-    } else {
-        console.log("initializeWebRTC: Video element 'stream' found:", videoElement);
-    }
+		if (!videoElement || !audioElement) {
+			throw new Error('Video or audio element not found on page');
+		}
 
-    if (!audioElement) {
-        console.error("initializeWebRTC: ERROR! Audio element with ID 'audio_stream' not found in the DOM!");
-    } else {
-        console.log("initializeWebRTC: Audio element 'audio_stream' found:", audioElement);
-    }
+		// Add video element loadeddata event listener
+		videoElement.addEventListener('loadeddata', () => {
+			state.webrtc?.input?.getCursorScaleFactor();
+		});
 
-    if (!videoElement || !audioElement) {
-        console.error("initializeWebRTC: One or both of video/audio elements are missing, aborting initialization.");
-        return; // Stop further execution if elements are missing
-    }
+		set({ videoElement, audioElement });
 
-    // Add video element loadeddata event listener
-    videoElement.addEventListener('loadeddata', () => {
-        console.log("initializeWebRTC: 'loadeddata' event fired on video element. Calling getCursorScaleFactor.");
-        get().webrtc?.input?.getCursorScaleFactor();
-    });
-    console.log("initializeWebRTC: 'loadeddata' event listener added to video element.");
+		// Initialize WebRTC connections
+		const protocol = location.protocol === "http:" ? "ws://" : "wss://";
+		const pathname = window.location.pathname.slice(0, window.location.pathname.lastIndexOf("/") + 1);
+		const baseURL = new URL(protocol + window.location.host + pathname + state.appName + "/signalling/");
 
-    set({ videoElement, audioElement });
-    console.log("initializeWebRTC: videoElement and audioElement state updated.");
+		// Set up signalling and WebRTC instances
+		const signalling = new WebRTCDemoSignalling(baseURL);
+		const webrtc = new WebRTCDemo(signalling, videoElement, 1);
+		const audio_signalling = new WebRTCDemoSignalling(baseURL);
+		const audio_webrtc = new WebRTCDemo(audio_signalling, audioElement, 3);
 
-    // Initialize WebRTC connections
-    const protocol = location.protocol === "http:" ? "ws://" : "wss://";
-    const pathname = window.location.pathname.slice(0, window.location.pathname.lastIndexOf("/") + 1);
-    const baseURL = new URL(protocol + window.location.host + pathname + get().appName + "/signalling/");
-    console.log("initializeWebRTC: Signalling baseURL constructed:", baseURL.href);
+		// Get initial window resolution
+		const initialResolution = webrtc.input.getWindowResolution();
+		set({ windowResolution: initialResolution });
 
-    console.log("initializeWebRTC: Creating WebRTCDemoSignalling for video signalling...");
-    const signalling = new window.WebRTCDemoSignalling(baseURL);
-    console.log("initializeWebRTC: WebRTCDemoSignalling for video created:", signalling);
+		if (state.scaleLocal === false && initialResolution) {
+			webrtc.element.style.width = `${initialResolution[0]/window.devicePixelRatio}px`;
+			webrtc.element.style.height = `${initialResolution[1]/window.devicePixelRatio}px`;
+		}
 
-    console.log("initializeWebRTC: Creating WebRTCDemo for video...");
-    const webrtc = new window.WebRTCDemo(signalling, videoElement, 1);
-    console.log("initializeWebRTC: WebRTCDemo for video created:", webrtc);
+		set({ signalling, webrtc, audio_signalling, audio_webrtc });
 
-    console.log("initializeWebRTC: Creating WebRTCDemoSignalling for audio signalling...");
-    const audio_signalling = new window.WebRTCDemoSignalling(baseURL);
-    console.log("initializeWebRTC: WebRTCDemoSignalling for audio created:", audio_signalling);
+		// Fetch TURN configuration
+		fetch("./turn")
+			.then(response => response.json())
+			.then((config) => {
+				webrtc.forceTurn = state.turnSwitch;
+				audio_webrtc.forceTurn = state.turnSwitch;
 
-    console.log("initializeWebRTC: Creating WebRTCDemo for audio...");
-    const audio_webrtc = new window.WebRTCDemo(audio_signalling, audioElement, 3);
-    console.log("initializeWebRTC: WebRTCDemo for audio created:", audio_webrtc);
+				if (config.iceServers.length > 1) {
+					get().addDebugEntry("[app] using TURN servers: " + config.iceServers[1].urls.join(", "));
+				} else {
+					get().addDebugEntry("[app] no TURN servers found.");
+				}
 
-    set({ signalling, webrtc, audio_signalling, audio_webrtc });
-    console.log("initializeWebRTC: signalling, webrtc, audio_signalling, audio_webrtc state updated.");
+				webrtc.rtcPeerConfig = config;
+				audio_webrtc.rtcPeerConfig = config;
+				webrtc.connect();
+				audio_webrtc.connect();
+			});
 
-    // Get initial window resolution
-    const initialResolution = webrtc.input.getWindowResolution();
-    set({ windowResolution: initialResolution });
-    console.log("initializeWebRTC: Initial window resolution obtained:", initialResolution);
+		// Add window focus/blur handlers
+		window.addEventListener('focus', () => {
+			// Reset keyboard to avoid stuck keys
+			webrtc.sendDataChannelMessage("kr");
 
-    if (get().scaleLocal === false && initialResolution) {
-        console.log("initializeWebRTC: Applying initial video element style based on resolution and scaleLocal=false.");
-        webrtc.element.style.width = `${initialResolution[0]/window.devicePixelRatio}px`;
-        webrtc.element.style.height = `${initialResolution[1]/window.devicePixelRatio}px`;
-        console.log(`initializeWebRTC: Video element style width set to: ${webrtc.element.style.width}, height set to: ${webrtc.element.style.height}`);
-    } else {
-        console.log("initializeWebRTC: scaleLocal is true or initialResolution is not available, skipping initial video element style adjustment.");
-    }
+			// Send clipboard contents
+			navigator.clipboard.readText()
+				.then(text => {
+					webrtc.sendDataChannelMessage("cw," + stringToBase64(text));
+				})
+				.catch(err => {
+					webrtc._setStatus('Failed to read clipboard contents: ' + err);
+				});
+		});
 
-    console.log("initializeWebRTC: Fetching TURN configuration from ./turn...");
-    fetch("./turn")
-        .then(response => {
-            console.log("initializeWebRTC: TURN config fetch response received:", response);
-            if (!response.ok) {
-                console.error("initializeWebRTC: TURN config fetch failed with status:", response.status, response.statusText);
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then((config) => {
-            console.log("initializeWebRTC: TURN config JSON parsed successfully:", config);
-            webrtc.forceTurn = get().turnSwitch;
-            audio_webrtc.forceTurn = get().turnSwitch;
-            console.log("initializeWebRTC: forceTurn set for webrtc and audio_webrtc based on turnSwitch state.");
+		window.addEventListener('blur', () => {
+			// Reset keyboard to avoid stuck keys
+			webrtc.sendDataChannelMessage("kr");
+		});
+	},
 
-            if (config.iceServers && config.iceServers.length > 1) {
-                get().addDebugEntry("[app] using TURN servers: " + config.iceServers[1].urls.join(", "));
-                console.log("initializeWebRTC: Using TURN servers:", config.iceServers[1].urls.join(", "));
-            } else {
-                get().addDebugEntry("[app] no TURN servers found.");
-                console.log("initializeWebRTC: No TURN servers found in config.");
-            }
-
-            webrtc.rtcPeerConfig = config;
-            audio_webrtc.rtcPeerConfig = config;
-            console.log("initializeWebRTC: rtcPeerConfig set for webrtc and audio_webrtc.");
-
-            console.log("initializeWebRTC: Calling webrtc.connect()...");
-            webrtc.connect();
-            console.log("initializeWebRTC: webrtc.connect() called.");
-
-            console.log("initializeWebRTC: Calling audio_webrtc.connect()...");
-            audio_webrtc.connect();
-            console.log("initializeWebRTC: audio_webrtc.connect() called.");
-
-        })
-        .catch(error => {
-            console.error("initializeWebRTC: ERROR fetching or processing TURN config:", error);
-        });
-
-    // Add window focus/blur handlers
-    window.addEventListener('focus', () => {
-        console.log("initializeWebRTC: Window 'focus' event detected. Sending 'kr' (keyboard reset) and clipboard request.");
-        // Reset keyboard to avoid stuck keys
-        webrtc.sendDataChannelMessage("kr");
-
-        // Send clipboard contents
-        navigator.clipboard.readText()
-            .then(text => {
-                console.log("initializeWebRTC: Clipboard text read successfully, sending 'cw' message.");
-                webrtc.sendDataChannelMessage("cw," + stringToBase64(text));
-            })
-            .catch(err => {
-                console.warn("initializeWebRTC: Failed to read clipboard contents (this might be normal if clipboard access is not granted):", err);
-                webrtc._setStatus('Failed to read clipboard contents: ' + err);
-            });
-    });
-    console.log("initializeWebRTC: 'focus' event listener added to window.");
-
-    window.addEventListener('blur', () => {
-        console.log("initializeWebRTC: Window 'blur' event detected. Sending 'kr' (keyboard reset).");
-        // Reset keyboard to avoid stuck keys
-        webrtc.sendDataChannelMessage("kr");
-    });
-    console.log("initializeWebRTC: 'blur' event listener added to window.");
-
-    console.log("initializeWebRTC: WebRTC initialization process started. Check console logs for further steps and potential errors.");
-},
 	handleConnectionStateChange: (state, type) => {
 		const store = get();
 		if (type === 'video') {
