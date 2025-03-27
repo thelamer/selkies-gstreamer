@@ -20,6 +20,8 @@
  *   limitations under the License.
  */
 
+import { Input } from "./input.js";
+
 /*global GamepadManager, Input*/
 
 /*eslint no-unused-vars: ["error", { "vars": "local" }]*/
@@ -56,7 +58,7 @@ class WebRTCDemo {
         this.signalling = signalling;
 
         /**
-         * @type {Element}
+         * @type {HTMLVideoElement | HTMLAudioElement}
          */
         this.element = element;
 
@@ -92,17 +94,17 @@ class WebRTCDemo {
         this.peerConnection = null;
 
         /**
-         * @type {function}
+         * @type {((message: string) => void) | null}
          */
         this.onstatus = null;
 
         /**
-         * @type {function}
+         * @type {((message: string) => void) | null}
          */
         this.ondebug = null;
 
         /**
-         * @type {function}
+         * @type {((message: string) => void) | null}
          */
         this.onerror = null;
 
@@ -180,7 +182,7 @@ class WebRTCDemo {
          */
         this.input = new Input(this.element, (data) => {
             if (this._connected && this._send_channel !== null && this._send_channel.readyState === 'open') {
-                this._setDebug("data channel: " + data);
+                this.setDebug("data channel: " + data);
                 this._send_channel.send(data);
             }
         });
@@ -189,10 +191,9 @@ class WebRTCDemo {
     /**
      * Sets status message.
      *
-     * @private
      * @param {String} message
      */
-    _setStatus(message) {
+    setStatus(message) {
         if (this.onstatus !== null) {
             this.onstatus(message);
         }
@@ -201,10 +202,9 @@ class WebRTCDemo {
     /**
      * Sets debug message.
      *
-     * @private
      * @param {String} message
      */
-    _setDebug(message) {
+    setDebug(message) {
         if (this.ondebug !== null) {
             this.ondebug(message);
         }
@@ -213,10 +213,9 @@ class WebRTCDemo {
     /**
      * Sets error message.
      *
-     * @private
      * @param {String} message
      */
-    _setError(message) {
+    setError(message) {
         if (this.onerror !== null) {
             this.onerror(message);
         }
@@ -238,12 +237,12 @@ class WebRTCDemo {
      * @param {RTCIceCandidate} icecandidate
      */
     _onSignallingICE(icecandidate) {
-        this._setDebug("received ice candidate from signalling server: " + JSON.stringify(icecandidate));
+        this.setDebug("received ice candidate from signalling server: " + JSON.stringify(icecandidate));
         if (this.forceTurn && JSON.stringify(icecandidate).indexOf("relay") < 0) { // if no relay address is found, assuming it means no TURN server
-            this._setDebug("Rejecting non-relay ICE candidate: " + JSON.stringify(icecandidate));
+            this.setDebug("Rejecting non-relay ICE candidate: " + JSON.stringify(icecandidate));
             return;
         }
-        this.peerConnection.addIceCandidate(icecandidate).catch(this._setError);
+        this.peerConnection.addIceCandidate(icecandidate).catch(this.setError);
     }
 
     /**
@@ -255,7 +254,7 @@ class WebRTCDemo {
      */
     _onPeerICE(event) {
         if (event.candidate === null) {
-            this._setStatus("Completed ICE candidates from peer connection");
+            this.setStatus("Completed ICE candidates from peer connection");
             return;
         }
         this.signalling.sendICE(event.candidate);
@@ -270,12 +269,12 @@ class WebRTCDemo {
      */
     _onSDP(sdp) {
         if (sdp.type != "offer") {
-            this._setError("received SDP was not type offer.");
+            this.setError("received SDP was not type offer.");
             return;
         }
         console.log("Received remote SDP", sdp);
         this.peerConnection.setRemoteDescription(sdp).then(() => {
-            this._setDebug("received SDP offer, creating answer");
+            this.setDebug("received SDP offer, creating answer");
             this.peerConnection.createAnswer()
                 .then((local_sdp) => {
                     // Set sps-pps-idr-in-keyframe=1
@@ -309,11 +308,11 @@ class WebRTCDemo {
                     }
                     console.log("Created local SDP", local_sdp);
                     this.peerConnection.setLocalDescription(local_sdp).then(() => {
-                        this._setDebug("Sending SDP answer");
+                        this.setDebug("Sending SDP answer");
                         this.signalling.sendSDP(this.peerConnection.localDescription);
                     });
                 }).catch(() => {
-                    this._setError("Error creating local SDP");
+                    this.setError("Error creating local SDP");
                 });
         });
     }
@@ -324,7 +323,7 @@ class WebRTCDemo {
      * @param {RTCSessionDescription} local_sdp
      */
     _onLocalSDP(local_sdp) {
-        this._setDebug("Created local SDP: " + JSON.stringify(local_sdp));
+        this.setDebug("Created local SDP: " + JSON.stringify(local_sdp));
     }
 
     /**
@@ -333,7 +332,7 @@ class WebRTCDemo {
      * @param {Event} event - Track event: https://developer.mozilla.org/en-US/docs/Web/API/RTCTrackEvent
      */
     _ontrack(event) {
-        this._setStatus("Received incoming " + event.track.kind + " stream from peer");
+        this.setStatus("Received incoming " + event.track.kind + " stream from peer");
         if (!this.streams) this.streams = [];
         this.streams.push([event.track.kind, event.streams]);
         if (event.track.kind === "video" || event.track.kind === "audio") {
@@ -348,7 +347,7 @@ class WebRTCDemo {
      * @param {RTCdataChannelEvent} event
      */
     _onPeerdDataChannel(event) {
-        this._setStatus("Peer data channel created: " + event.channel.label);
+        this.setStatus("Peer data channel created: " + event.channel.label);
 
         // Bind the data channel event handlers.
         this._send_channel = event.channel;
@@ -375,17 +374,17 @@ class WebRTCDemo {
             msg = JSON.parse(event.data);
         } catch (e) {
             if (e instanceof SyntaxError) {
-                this._setError("error parsing data channel message as JSON: " + event.data);
+                this.setError("error parsing data channel message as JSON: " + event.data);
             } else {
-                this._setError("failed to parse data channel message: " + event.data);
+                this.setError("failed to parse data channel message: " + event.data);
             }
             return;
         }
 
-        this._setDebug("data channel message: " + event.data);
+        this.setDebug("data channel message: " + event.data);
 
         if (msg.type === 'pipeline') {
-            this._setStatus(msg.data.status);
+            this.setStatus(msg.data.status);
         } else if (msg.type === 'gpu_stats') {
             if (this.ongpustats !== null) {
                 this.ongpustats(msg.data);
@@ -394,7 +393,7 @@ class WebRTCDemo {
             if (msg.data !== null) {
                 var content = msg.data.content;
                 var text = base64ToString(content);
-                this._setDebug("received clipboard contents, length: " + content.length);
+                this.setDebug("received clipboard contents, length: " + content.length);
 
                 if (this.onclipboardcontent !== null) {
                     this.onclipboardcontent(text);
@@ -406,22 +405,22 @@ class WebRTCDemo {
                 var handle = msg.data.handle;
                 var hotspot = msg.data.hotspot;
                 var override = msg.data.override;
-                this._setDebug(`received new cursor contents, handle: ${handle}, hotspot: ${JSON.stringify(hotspot)} image length: ${curdata.length}`);
+                this.setDebug(`received new cursor contents, handle: ${handle}, hotspot: ${JSON.stringify(hotspot)} image length: ${curdata.length}`);
                 this.oncursorchange(handle, curdata, hotspot, override);
             }
         } else if (msg.type === 'system') {
             if (msg.action !== null) {
-                this._setDebug("received system msg, action: " + msg.data.action);
+                this.setDebug("received system msg, action: " + msg.data.action);
                 var action = msg.data.action;
                 if (this.onsystemaction !== null) {
                     this.onsystemaction(action);
                 }
             }
         } else if (msg.type === 'ping') {
-            this._setDebug("received server ping: " + JSON.stringify(msg.data));
+            this.setDebug("received server ping: " + JSON.stringify(msg.data));
             this.sendDataChannelMessage("pong," + new Date().getTime() / 1000);
         } else if (msg.type === 'system_stats') {
-            this._setDebug("received systems stats: " + JSON.stringify(msg.data));
+            this.setDebug("received systems stats: " + JSON.stringify(msg.data));
             if (this.onsystemstats !== null) {
                 this.onsystemstats(msg.data);
             }
@@ -430,7 +429,7 @@ class WebRTCDemo {
                 this.onlatencymeasurement(msg.data.latency_ms);
             }
         } else {
-            this._setError("Unhandled message received: " + msg.type);
+            this.setError("Unhandled message received: " + msg.type);
         }
     }
 
@@ -446,12 +445,12 @@ class WebRTCDemo {
     _handleConnectionStateChange(state) {
         switch (state) {
             case "connected":
-                this._setStatus("Connection complete");
+                this.setStatus("Connection complete");
                 this._connected = true;
                 break;
 
             case "disconnected":
-                this._setError("Peer connection disconnected");
+                this.setError("Peer connection disconnected");
                 if (this._send_channel !== null && this._send_channel.readyState === 'open') {
                     this._send_channel.close();
                 }
@@ -459,7 +458,7 @@ class WebRTCDemo {
                 break;
 
             case "failed":
-                this._setError("Peer connection failed");
+                this.setError("Peer connection failed");
                 this.element.load();
                 break;
             default:
@@ -475,7 +474,7 @@ class WebRTCDemo {
         if (this._send_channel !== null && this._send_channel.readyState === 'open') {
             this._send_channel.send(message);
         } else {
-            this._setError("attempt to send data channel message before channel was open.");
+            this.setError("attempt to send data channel message before channel was open.");
         }
     }
 
@@ -485,7 +484,7 @@ class WebRTCDemo {
      * @param {number} gp_num - the gamepad number
      */
     onGamepadDisconnect(gp_num) {
-        this._setStatus("gamepad: " + gp_num + ", disconnected");
+        this.setStatus("gamepad: " + gp_num + ", disconnected");
     }
 
     /**
@@ -695,12 +694,12 @@ class WebRTCDemo {
         var playPromise = this.element.play();
         if (playPromise !== undefined) {
             playPromise.then(() => {
-                this._setDebug("Stream is playing.");
+                this.setDebug("Stream is playing.");
             }).catch(() => {
                 if (this.onplaystreamrequired !== null) {
                     this.onplaystreamrequired();
                 } else {
-                    this._setDebug("Stream play failed and no onplaystreamrequired was bound.");
+                    this.setDebug("Stream play failed and no onplaystreamrequired was bound.");
                 }
             });
         }
@@ -726,7 +725,7 @@ class WebRTCDemo {
         };
 
         if (this.forceTurn) {
-            this._setStatus("forcing use of TURN server");
+            this.setStatus("forcing use of TURN server");
             var config = this.peerConnection.getConfiguration();
             config.iceTransportPolicy = "relay";
             this.peerConnection.setConfiguration(config);

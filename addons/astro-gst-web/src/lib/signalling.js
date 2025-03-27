@@ -65,18 +65,18 @@ class WebRTCDemoSignalling {
 
         /**
          * @event
-         * @type {function}
+         * @type {((message: string) => void) | null}
          */
         this.onstatus = null;
 
         /**
          * @event
-         * @type {function}
+         * @type {((message: string) => void) | null}
          */
         this.onerror = null;
 
         /**
-         * @type {function}
+         * @type {((message: string) => void) | null}
          */
         this.ondebug = null;
 

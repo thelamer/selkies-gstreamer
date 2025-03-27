@@ -12,6 +12,8 @@ declare global {
         store: typeof useAppStore;
         adapter: any; // Replace 'any' with the correct adapter type
     }
+    var Input: any;
+    var GamepadManager: any;
 }
 
 declare module 'webrtc-adapter' {

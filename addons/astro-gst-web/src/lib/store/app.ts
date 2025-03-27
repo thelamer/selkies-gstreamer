@@ -1,43 +1,6 @@
 import { create } from 'zustand';
-
-declare global {
-	class WebRTCDemo {
-		constructor(signalling: any, element: HTMLVideoElement | HTMLAudioElement, id: number);
-		signalling: any;
-		element: HTMLVideoElement | HTMLAudioElement;
-		input: WebRTCInput;
-		peerConnection: any;
-		cursor_cache: Map<string, string>;
-		forceTurn: boolean;
-		rtcPeerConfig: RTCConfiguration;
-		playStream: () => void;
-		connect: () => void;
-		reset: () => void;
-		sendDataChannelMessage: (message: string) => void;
-		getConnectionStats: () => Promise<any>;
-		_setStatus: (message: string) => void;
-		_setError: (message: string) => void;
-		// Event handlers
-		onconnectionstatechange?: (state: string) => void;
-		ondatachannelopen?: () => void;
-		ondatachannelclose?: () => void;
-		onplaystreamrequired?: () => void;
-		onlatencymeasurement?: (latency_ms: number) => void;
-		onsystemstats?: (stats: any) => void;
-		oncursorchange?: (handle: string, curdata: string, hotspot: { x: number; y: number } | null, override: string | null) => void;
-		onsystemaction?: (action: string) => void;
-		ongpustats?: (data: { load: number; memory_total: number; memory_used: number }) => void;
-	}
-
-	class WebRTCDemoSignalling {
-		constructor(url: URL);
-		disconnect: () => void;
-		onstatus?: (message: string) => void;
-		onerror?: (message: string) => void;
-		ondisconnect?: () => void;
-		ondebug?: (message: string) => void;
-	}
-}
+import { WebRTCDemoSignalling } from "@/lib/signalling.js";
+import { WebRTCDemo } from "@/lib/webrtc.js";
 
 // Helper functions
 const stringToBase64 = (str: string) => {
@@ -200,6 +163,7 @@ interface WebRTCInput {
 const isClient = typeof window !== 'undefined';
 
 const getInitialAppName = () => {
+    return "webrtc";
     if (!isClient) return "webrtc";
     return window.location.pathname.endsWith("/") ? 
         window.location.pathname.split("/")[1] : 
@@ -391,13 +355,12 @@ const useAppStore = create<WebRTCState & WebRTCActions>((set, get) => ({
 				state.webrtc?.sendDataChannelMessage("cr");
 			})
 			.catch(err => {
-				state.webrtc?._setError('Failed to read clipboard contents: ' + err);
+				state.webrtc?.setError('Failed to read clipboard contents: ' + err);
 			});
 	},
 
 	initializeWebRTC: () => {
 		if (!isClient) return;
-
         // Add PWA service worker registration
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./sw.js?ts=CACHE_VERSION');
@@ -431,7 +394,7 @@ const useAppStore = create<WebRTCState & WebRTCActions>((set, get) => ({
 
 		// Get initial window resolution
 		const initialResolution = webrtc.input.getWindowResolution();
-		set({ windowResolution: initialResolution });
+		//set({ windowResolution: initialResolution });
 
 		if (state.scaleLocal === false && initialResolution) {
 			webrtc.element.style.width = `${initialResolution[0]/window.devicePixelRatio}px`;
@@ -470,7 +433,7 @@ const useAppStore = create<WebRTCState & WebRTCActions>((set, get) => ({
 					webrtc.sendDataChannelMessage("cw," + stringToBase64(text));
 				})
 				.catch(err => {
-					webrtc._setStatus('Failed to read clipboard contents: ' + err);
+					webrtc.setStatus('Failed to read clipboard contents: ' + err);
 				});
 		});
 
@@ -519,12 +482,12 @@ const useAppStore = create<WebRTCState & WebRTCActions>((set, get) => ({
 
 		// Bind gamepad handlers
 		state.webrtc.input.ongamepadconnected = (gamepad_id: string) => {
-			state.webrtc?._setStatus('Gamepad connected: ' + gamepad_id);
+			state.webrtc?.setStatus('Gamepad connected: ' + gamepad_id);
 			set({ gamepad: { gamepadState: "connected", gamepadName: gamepad_id } });
 		};
 
 		state.webrtc.input.ongamepaddisconnected = () => {
-			state.webrtc?._setStatus('Gamepad disconnected');
+			state.webrtc?.setStatus('Gamepad disconnected');
 			set({ gamepad: { gamepadState: "disconnected", gamepadName: "none" } });
 		};
 
@@ -551,7 +514,7 @@ const useAppStore = create<WebRTCState & WebRTCActions>((set, get) => ({
 
 	handleSystemAction: (action) => {
 		const state = get();
-		state.webrtc?._setStatus("Executing system action: " + action);
+		state.webrtc?.setStatus("Executing system action: " + action);
 
 		if (action === 'reload') {
 			setTimeout(() => {
@@ -600,7 +563,7 @@ const useAppStore = create<WebRTCState & WebRTCActions>((set, get) => ({
 		if (state.clipboardStatus === 'enabled') {
 			navigator.clipboard.writeText(content)
 				.catch(err => {
-					state.webrtc?._setStatus('Could not copy text to clipboard: ' + err);
+					state.webrtc?.setStatus('Could not copy text to clipboard: ' + err);
 				});
 		}
 	},
