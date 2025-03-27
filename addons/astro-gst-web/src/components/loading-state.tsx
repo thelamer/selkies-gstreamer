@@ -2,22 +2,29 @@ import { LoaderCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import useAppStore from '@/lib/store/app';
+import { useEffect } from 'react'; // <-- Import useEffect
 
 interface LoadingStateProps {
   className?: string;
 }
 
 export function LoadingState({ className }: LoadingStateProps) {
-  const { 
-    status, 
-    showStart, 
-    loadingText, 
+  const {
+    status,
+    showStart,
+    loadingText,
     playStream,
-    signalling 
+    signalling,
+    initializeWebRTC // <-- Get initializeWebRTC from the store
   } = useAppStore();
 
-  const handleReload = () => {
+  useEffect(() => {
+    console.log("LoadingState: useEffect hook is running");
+    initializeWebRTC(); // Call initializeWebRTC when component mounts
+    console.log("LoadingState: initializeWebRTC() has been called");
+  }, [initializeWebRTC]); // Dependency array - include initializeWebRTC
 
+  const handleReload = () => {
     // Disconnect signalling before reload
     signalling?.disconnect();
     setTimeout(() => {
@@ -48,7 +55,7 @@ export function LoadingState({ className }: LoadingStateProps) {
               <div className="mt-4 text-muted-foreground">{loadingText || "Connecting..."}</div>
             </>
           )}
-          
+
           {status === 'connected' && showStart && (
             <Button
               onClick={playStream}

@@ -6,12 +6,25 @@ import Layout from "@/layouts/Layout.astro";
 
 <Layout title="Selkies - webrtc">
   <div class="flex h-svh items-center justify-center">
-    <!-- <img 
-        class="absolute w-full h-full object-cover" 
-        src="/desktop.png" 
+    <!-- <img
+        class="absolute w-full h-full object-cover"
+        src="/desktop.png"
         alt="Desktop background"
     /> -->
     <LoadingState client:only="react" />
     <MenuComponent client:only="react" />
+
+    {/* Add video and audio elements here */}
+    <div id="audio_container" class="audio-container">
+      <audio id="audio_stream" class="audio" preload="none" playsinline>
+        Your browser doesn't support audio
+      </audio>
+    </div>
+
+    <div id="video_container" class="video-container">
+      <video id="stream" class="video" preload="none" disablePictureInPicture="true" playsinline>
+        Your browser doesn't support video
+      </video>
+    </div>
   </div>
 </Layout>
